@@ -17,7 +17,7 @@ def strip_accents(s):
  
 def del_punct_wsp(text): 
     text = text.upper()
-    text = re.sub('(?:MR|SR|SRES|MISS)\.\s*','',text)
+    text = re.sub('(?:MR|SR|SRA|SRTA|SRES|MISS)\.\s*','',text)
     text = re.sub(r'\([^)]*\)', '', text) #remueve paréntesis y todo lo de adentro
     text = text.replace(".","").replace('('," ").replace(")"," ")
     text = text.replace("\M:"," ").replace("M:"," ")
@@ -39,6 +39,10 @@ def del_punct_wsp(text):
 
 def special_corrections(text): 
     text = re.sub(r"\bCOMPA.*IA\b","COMPANIA",text)
+    text = re.sub(r"\bLA VICU.*A\b","LA VICUNA",text)
+    text = re.sub(r"\bMONTADZ.*A\b", "MONTANA", text)
+    text = re.sub(r"DZ˝","N",text) 
+    text = re.sub(r"\bASIJEMIN\b", "ASOCIACION SINDICAL DEL PERSONAL JERARQUICO PROFESIONAL Y TECNICO DE LA ACTIVIDAD MINERA ARGENTINA", text)
     text = re.sub(r"\bS A I C Y A\b","SAICYA", text)
     text = re.sub(r"\bS A C I\b","SACI",text)
     text = re.sub(r"\bSAIC Y F\b","SAICYF", text)
@@ -78,7 +82,7 @@ def strip_spaces(text):
   return text.upper().lstrip().rstrip()
 
 def remove_within_wsp(text):
-  return re.sub(r'\s', " ", text)
+  return " ".join(text.split())
 
 def sepecial_deletions(text, acronyms_list_or_dict): 
   return " ".join([word for word in text.split(" ") if word not in acronyms_list_or_dict])

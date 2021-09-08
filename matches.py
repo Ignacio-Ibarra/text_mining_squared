@@ -52,9 +52,9 @@ names_mectra['clean1'] = names_mectra['denominacion'].apply(lambda x: pre_proces
 
 
 
-merged = names_mineras.merge(names_mectra, how='left', left_on='clean1', right_on='clean1')
+#merged = names_mineras.merge(names_mectra, how='left', left_on='clean1', rig#ht_on='clean1')
 
-ok = merged[merged.denominacion.isna()==False]['clean1'].to_numpy()
+#ok = np.sort(merged[merged.denominacion.isna()==False]['clean1'].to_numpy())
 
 
 def ngrams2(text, n=3): 
@@ -73,45 +73,72 @@ tfidf_matrix_all = vectorize_all.fit(all_names)
 tfidf_mineras = vectorize_all.transform(NameMineras)
 tfidf_mectra = vectorize_all.transform(NameMectra)
 
-match = awesome_cossim_topn(tfidf_mineras, tfidf_mectra.transpose(), ntop=1, lower_bound=0.80)
+match = awesome_cossim_topn(tfidf_mineras, tfidf_mectra.transpose(), ntop=1, lower_bound=0.8341)
 
 ver = np.nonzero(match.toarray())
 
 Names = pd.DataFrame()
 Names['NameMineras'] = NameMineras
-Names['NameMectra'] = 'no_match'
+Names['NameMectra'] = np.nan
 Names['Similarity'] = np.nan
+Names['Matcheo'] = np.nan
+
 
 for k,v in zip(ver[0],ver[1]):
-    Names.iloc[k,1]=NameMectra[v]
+    Names.iloc[k,1]=  NameMectra[v]
     Names.iloc[k,2] = match[k,v]
+    if match[k,v] >= 0.8341: 
+       Names.iloc[k,3] = "ok"
+       
 
-ok_plus = Names[Names.NameMectra!="no_match"]['NameMineras'].to_numpy()
-
+Names = Names.sort_values(by='Similarity', ascending=False).reset_index(drop=True)
+#ok_plus = np.sort(Names[Names.NameMectra.isna()==False]['NameMineras'].to_numpy())
 
 Names.to_excel('data/primer_output.xlsx',index=False)
 
-np.setdiff1d(ok_plus,ok)
-names_mectra[names_mectra.clean1.str.contains("GOLDER")]
+# =============================================================================
+# MERGE DE RESULTADOS
+# =============================================================================
+devolucion = pd.read_excel('data/primer_output.xlsx')
+
+devolucion['cuit'] = "no_match"
+devolucion['clae'] = "no_match"
+for i in range(len(devolucion)):
+    if devolucion.iloc[i,3]=="ok":
+        nmectra = devolucion.iloc[i,1]
+        clae = names_mectra.loc[names_mectra.clean1==nmectra,"clae6"].values
+        cuit = names_mectra.loc[names_mectra.clean1==nmectra,"cuit"].values
+        if len(cuit)>1:
+            devolucion.iloc[i,4] = "multiple_match: "+" - ".join([str(int(x)) for x in cuit])        
+        else:
+            cuit = int(cuit[0])
+            devolucion.iloc[i,4] = cuit
+        if len(clae)>1:
+            devolucion.iloc[i,5] = "multiple_match: "+" - ".join([str(int(x)) for x in clae])
+        else: 
+            clae = int(clae[0])
+            devolucion.iloc[i,5]=clae
+    if devolucion.iloc[i,3]=="no":
+        devolucion.iloc[i,1]="no_match"
+        devolucion.iloc[i,2] ="no_match"
+        
+        
+devolucion.fillna("no_match", inplace=True)
+
+a = names_mineras.merge(devolucion, left_on="clean1", right_on="NameMineras", how='left')
+a.columns
+
+a = a[['razon social','cuit_y','clae_y']]
+
+a.columns = ['razon social','cuit','clae']
+
+a[a.cuit!="no_match"].shape
+
+mineras_ok = pd.read_excel("data/Cuits proveedores mineros.xlsx", sheet_name='Listado CUITs mineria')
+
+mineras_ok = mineras_ok[mineras_ok.cuit.isna()==False].reset_index(drop=True)
+
+mineras_ok = mineras_ok.append(a, ignore_index=True)
 
 
-pre_processing("2219292 ALBER23TA LTD", acronyms_at_end=False, digits=False)
-
-a = names_mineras[names_mineras['clean1']=="PRINGLES  SR LEONARDO ALBERTO"]['razon social'].values[0]
-
-names_mectra[names_mectra.clean1.str.contains(r'(?=.*VIDELA)(?=.*JULIO)', regex=True)]['clean1']
-
-b = names_mectra[names_mectra.clean1.str.contains('PATRICIO PALMERO', regex=True)]['clean1']
-
-c = names_mectra[names_mectra.clean1==b]['denominacion'].values[0]
-
-names_mectra[names_mectra.clean1.str.contains('VALLE DEL CURA', regex=True)] 
-
-pre_processing(a, digits=False,acronyms_at_end=False,special_deletions=False)
-
-re.sub('(?:MR|SR|SRES|MISS)\.\s*','',a.upper())
-
-re.sub(r"COMPAďż˝IA|COMPADZ˝IA|COMPA#IA","COMPANIA",c) 
-
-prefixes = ['mr', 'smr']
-print('\b(?:' + '|'.join(prefixes) + r')\.\s*')
+mineras_ok.to_excel('data/resultado_08-09-2021.xlsx', index=False)
